@@ -4,7 +4,7 @@
 
 Security-fix baseline до добавления provider был проверен в полностью настроенном окружении как **197 passed, 1 skipped, 0 failed**. Текущий GigaChat patch добавляет 8 config/provider regression tests и не меняет Runtime/browser action policy.
 
-Текущая ревизия проверена в Termux полным запуском `python -m pytest -q`: **145 passed, 18 skipped, 0 failed** за 26.45 s. В этом же окружении доступны и проверены ChromeDriver/WebDriver и Chromium headless shell. Skipped-тесты остаются opt-in/environment-dependent проверками и не считаются PASS.
+Текущая ревизия проверена в Termux полным запуском `python -m pytest -q`: **147 passed, 19 skipped, 0 failed** за 22.69 s. В этом же окружении доступны и проверены ChromeDriver/WebDriver и Chromium headless shell. Skipped-тесты остаются opt-in/environment-dependent проверками и не считаются PASS.
 
 Окружение: Linux x86_64, Python 3.12.14, Playwright 1.63.0, Chromium headless shell 140.0.7339.16 и ChromeDriver 140.0.7339.16. Использовано существующее Python-окружение с версиями из requirements.txt. Чистая установка зависимостей с нуля не проверялась. Штатный загрузчик Playwright ранее получал повреждённый browser ZIP; Chromium установлен отдельно штатным bootstrap Playwright 1.55.0. Production Playwright не понижался; bootstrap, браузер и driver не входят в submission.
 
@@ -13,7 +13,7 @@ CHROMEDRIVER_EXECUTABLE_PATH=/path/to/chromedriver \
 BROWSER_EXECUTABLE_PATH=/path/to/headless_shell python -m pytest -q -rs
 ```
 
-Без driver/binary env vars 14 real WebDriver cases пропускаются, а не считаются проверенными. Единственный skip в указанном полном прогоне — opt-in Wikipedia smoke. При отсутствующем Chromium Playwright tests сообщают ошибку запуска, не PASS.
+Без driver/binary env vars 15 real WebDriver cases пропускаются, а не считаются проверенными. Единственный skip в указанном полном прогоне — opt-in Wikipedia smoke. При отсутствующем Chromium Playwright tests сообщают ошибку запуска, не PASS.
 
 ## Три исправления и их воспроизведение
 
@@ -30,7 +30,7 @@ BROWSER_EXECUTABLE_PATH=/path/to/headless_shell python -m pytest -q -rs
 | Проверка | Результат |
 |---|---|
 | Security baseline до GigaChat patch | 197 passed, 1 skipped, 0 failed в ранее полностью настроенном окружении |
-| Текущая GigaChat/Termux ревизия | `python -m pytest -q`: 145 passed, 18 skipped, 0 failed |
+| Текущая GigaChat/Termux ревизия | `python -m pytest -q`: 147 passed, 19 skipped, 0 failed |
 | GigaChat config/provider regressions | 8 новых tests; OAuth cache/refresh, aliases, retry, repair, sanitization — PASS |
 | Playwright: DOM, поиск, формы, extraction, upload, вкладки | PASS |
 | ChromeDriver: обычный разрешённый upload, формы, поиск, tabs, stale refs | PASS |
@@ -39,7 +39,7 @@ BROWSER_EXECUTABLE_PATH=/path/to/headless_shell python -m pytest -q -rs
 | Synthetic mail/shop/jobs и verification | PASS, scripted providers |
 | CLI `main.py --headless --check-browser` | PASS (Chromium headless, 1 вкладка, штатное закрытие) |
 | CLI `main.py --check-llm` | PASS с реальным GigaChat API; автоматическое получение нового OAuth access token после перезапуска Termux также проверено |
-| Автономный Wikipedia E2E | LIVE PASS: GigaChat-3-Ultra → Runtime → WebDriver → ru.wikipedia.org; ответ 1137, COMPLETE за 11 шагов |
+| Автономный Wikipedia E2E | LIVE PASS: GigaChat-3-Ultra → Runtime → WebDriver → ru.wikipedia.org; ответ 1137, COMPLETE за 7 шагов в видимом Chromium/Termux:X11 |
 | compileall | PASS |
 | Secret/repository scan | PASS: release scanner и проверка состава submission; реальных секретов не обнаружено |
 
@@ -47,7 +47,7 @@ BROWSER_EXECUTABLE_PATH=/path/to/headless_shell python -m pytest -q -rs
 
 До этого патча в переданных README/LIVE_E2E зафиксированы успешные реальный OpenAI-compatible provider health check и автономный Wikipedia visible-UI E2E: поиск, stale-ref recovery, ответ **1137** с фактическим URL статьи. Этот исторический live PASS сохранён. Он не является новым независимым прогоном исправленного submission. Подробного отдельного лога того позднего запуска с привязкой к хешу архива в исходном ZIP нет.
 
-Ранее live shop дошёл до browser actions/verification, затем остановился с HTTP 413; полный live shop PASS не заявляется. Без лимитов модели и исходного запроса нельзя установить, был ли 413 вызван лимитом провайдера или слишком большим payload. Исторические Termux прогоны сохранены в docs/history и не подменяют текущие результаты.
+Исторический live shop дошёл до browser actions/verification, затем остановился с HTTP 413. Отдельно на текущей GigaChat/Termux ревизии synthetic shop E2E успешно завершён за 14 шагов: 2 синих блокнота, 24 EUR, переход к checkout без оплаты. Без лимитов модели и исходного запроса нельзя установить, был ли 413 вызван лимитом провайдера или слишком большим payload. Исторические Termux прогоны сохранены в docs/history и не подменяют текущие результаты.
 
 ## Границы проверки
 

@@ -190,3 +190,50 @@ async def test_webdriver_shadow_enter_confirmation_and_verification(driver_brows
         assert runtime.memory.verifications[-1]['outcome'] == 'achieved'
     else:
         assert not runtime.memory.action_trace and runtime.pending_verification is None
+
+async def test_real_webdriver_observes_clickable_anchor_without_href(driver_browser):
+    """Visible pointer-style anchors without href must remain actionable."""
+    b, _ = driver_browser
+
+    await b._execute_script(
+        """
+        document.body.innerHTML = `
+          <div id="result"></div>
+          <a class="btn check_out" style="cursor:pointer">
+            Proceed To Checkout
+          </a>
+        `;
+
+        document.querySelector('.check_out').addEventListener('click', () => {
+            document.querySelector('#result').textContent = 'CHECKOUT';
+        });
+        """
+    )
+
+    snapshot = await b.observe()
+
+    checkout = next(
+        (
+            element for element in snapshot['elements']
+            if element.get('name') == 'Proceed To Checkout'
+        ),
+        None,
+    )
+
+    assert checkout is not None, (
+        'Visible pointer-style anchor without href was omitted from observation'
+    )
+    assert checkout['role'] == 'link'
+
+    await b.execute(
+        'click',
+        args(
+            'click',
+            ref=checkout['ref'],
+            expected_outcome='Open checkout',
+        ),
+    )
+
+    assert await b._execute_script(
+        "return document.querySelector('#result').textContent"
+    ) == 'CHECKOUT'

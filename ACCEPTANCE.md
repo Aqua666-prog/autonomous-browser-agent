@@ -7,7 +7,7 @@
 | Требование | Реализация / фактическая проверка | Статус |
 |---|---|---|
 | Security-fix baseline | 197 passed, 1 skipped, 0 failed в ранее полностью настроенном окружении | automated PASS |
-| GigaChat provider patch | 8 provider/config tests; полный текущий suite: 145 passed, 18 skipped, 0 failed | automated PASS |
+| GigaChat provider patch | 8 provider/config tests; полный текущий suite: 147 passed, 19 skipped, 0 failed | automated PASS |
 | GigaChat OAuth/function calling adapter | OAuth cache/refresh, letters-only tool aliases, argument normalization, retry/repair/sanitized errors | automated PASS |
 | Поиск в большом semantic snapshot | `find_in_page` находит control за пределами первых 180 и возвращает actionable ref | automated PASS |
 | Batch form fill | text + select через `fill_form`, значения не логируются | automated PASS |
@@ -26,9 +26,9 @@
 | Длинная задача | 108 шагов; первоначальная цель, план, 12 ответов, 24 факта сохранены | automated PASS |
 | CDP attach/detach | Chromium process + synthetic localStorage, повторное подключение, браузер не закрыт | automated PASS |
 | Исторический Wikipedia live E2E | До патча зафиксированы видимый поиск, stale recovery, 1137 и URL; см. LIVE_E2E.md | historical live PASS |
-| Текущий GigaChat LLM E2E | GigaChat-3-Ultra → Runtime → WebDriver → Wikipedia; ответ 1137, COMPLETE за 11 шагов; `--check-llm` PASS | live PASS |
+| Текущий GigaChat LLM E2E | GigaChat-3-Ultra → Runtime → WebDriver → Wikipedia; ответ 1137, COMPLETE за 7 шагов в видимом Chromium/Termux:X11; `--check-llm` PASS | live PASS |
 | Реальные авторизованные почта/магазин/вакансии | Нет аккаунтов и участия пользователя в GUI | UNVERIFIED |
-| Текущая Termux-ревизия | `--check-browser` PASS, `--check-llm` PASS, 145 passed / 18 skipped, автономный Wikipedia E2E PASS | automated + live PASS для перечисленных проверок |
+| Текущая Termux-ревизия | `--check-browser` PASS, `--check-llm` PASS, 147 passed / 19 skipped, автономный Wikipedia E2E PASS | automated + live PASS для перечисленных проверок |
 
 ## Финальная desktop acceptance
 

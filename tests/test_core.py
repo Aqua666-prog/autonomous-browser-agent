@@ -7,7 +7,7 @@ from browser_agent.tools import parse_call, schemas, REGISTRY
 from browser_agent.settings import Settings
 from browser_agent.llm import (Decision, ProviderError, MalformedDecision, ZAIProvider,
     OpenAICompatibleProvider, GigaChatProvider, create_provider)
-from browser_agent.runtime import Runtime, Memory
+from browser_agent.runtime import Runtime, Memory, bounded
 
 @pytest.mark.parametrize('name,args', [
     ('shell', '{}'), ('click', '{'), ('click', '{"ref":"invented"}'),
@@ -1011,3 +1011,118 @@ async def test_find_in_page_result_directs_model_to_act_not_search_again():
 
     assert 'Use one of the returned refs in the NEXT action' in memory_text
     assert 'Do NOT call find_in_page again while the page is unchanged' in memory_text
+
+
+async def test_ref_hidden_by_bounded_observation_is_not_actionable():
+    """A model must not act on a ref omitted from the observation it received."""
+    class CrowdedBrowser(FakeBrowser):
+        def __init__(self):
+            super().__init__()
+            self.click_refs = []
+
+        async def observe(self):
+            elements = [
+                {
+                    'ref': f's1e{i}',
+                    'role': 'button',
+                    'name': f'Control {i}',
+                    'href': None,
+                    'type': 'button',
+                }
+                for i in range(100)
+            ]
+            return {
+                'url': self.page.url,
+                'title': 'Crowded page',
+                'text': 'Target product Add to cart ' + ('catalog ' * 1000),
+                'elements': elements,
+            }
+
+        async def execute(self, name, args):
+            self.executed.append(name)
+            if name == 'click':
+                self.click_refs.append(args.ref)
+            return {}
+
+    b = CrowdedBrowser()
+    p = ScriptedProvider([
+        # This ref exists in the full browser snapshot but must be omitted
+        # from the deliberately tiny model-visible observation.
+        ('click', {'ref':'s1e99', 'expected_outcome':'Add target product'}),
+        ('finish', {'result':'Could not safely use hidden ref','status':'blocked'}),
+    ])
+
+    result = await runtime(
+        b,
+        p,
+        confirmation_mode='none',
+        observation_budget=2500,
+    ).run('Add the target product')
+
+    first_payload = json.loads(p.messages[0][1]['content'])
+    exposed = {
+        e.get('ref')
+        for e in first_payload['observation'].get('elements', [])
+    }
+
+    assert 's1e99' not in exposed
+    assert 'click' not in b.executed
+    assert b.click_refs == []
+    assert result.status == 'blocked'
+
+
+def test_bounded_observation_preserves_useful_interactive_elements():
+    """Realistic browser elements must not be crowded out by large page text."""
+    elements = []
+    for i in range(64):
+        elements.append({
+            'autocomplete': None,
+            'checked': None,
+            'disabled': False,
+            'expanded': None,
+            'file_names': None,
+            'focused': False,
+            'form': False,
+            'form_action': None,
+            'form_method': None,
+            'form_name': None,
+            'form_role': None,
+            'href': f'https://example.org/product/{i}' if i % 3 == 0 else None,
+            'in_viewport': i < 12,
+            'invalid': False,
+            'name': f'Product {i} Add to cart',
+            'options': None,
+            'placeholder': None,
+            'readonly': False,
+            'required': False,
+            'role': 'button',
+            'selected': None,
+            'type': 'button',
+            'validation_message': None,
+            'value': None,
+            'ref': f's1e{i}',
+        })
+
+    snapshot = {
+        'dialogs': [],
+        'document_height': 7000,
+        'elements': elements,
+        'scroll_y': 0,
+        'text': ('Product catalog Add to cart\\n' * 500)[:12000],
+        'text_truncated': False,
+        'total_elements': 64,
+        'viewport_height': 1700,
+        'url': 'https://example.org/shop',
+        'title': 'Large shop',
+        'tabs': [{'index':0, 'url':'https://example.org/shop', 'active':True}],
+    }
+
+    result = bounded(snapshot, 28000)
+
+    assert len(json.dumps(result, ensure_ascii=False)) <= 28000
+    assert len(result.get('elements', [])) >= 32
+    assert result['elements'][0]['ref'] == 's1e0'
+    assert result['elements'][31]['ref'] == 's1e31'
+    assert result.get('url') == snapshot['url']
+    assert result.get('title') == snapshot['title']
+    assert result.get('text')

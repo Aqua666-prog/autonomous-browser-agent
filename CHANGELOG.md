@@ -2,16 +2,17 @@
 
 - Исправлена ложная классификация обычного GET search submit как consequential action: Runtime распознаёт `type=search` в той же GET-форме без ослабления POST и обычных GET-submit.
 - Добавлены regression cases для GET search submit, POST search submit и GET submit без matching search input.
-- Полный текущий suite: **145 passed, 18 skipped, 0 failed**.
+- Полный текущий suite: **147 passed, 19 skipped, 0 failed**.
 - `--check-browser` и реальный GigaChat `--check-llm` — PASS.
-- Автономный GigaChat-3-Ultra → WebDriver → Wikipedia E2E — LIVE PASS, ответ 1137, COMPLETE за 11 шагов.
+- Автономный GigaChat-3-Ultra → WebDriver → видимый Chromium/Termux:X11 → Wikipedia E2E — LIVE PASS, ответ 1137, COMPLETE за 7 шагов.
+- Synthetic shop E2E с GigaChat-3-Ultra и видимым Chromium/Termux:X11 — LIVE PASS, COMPLETE за 14 шагов: 2 синих блокнота, 24 EUR, checkout открыт без оплаты.
 
 - Добавлен отдельный официальный GigaChat REST provider: OAuth Authorization key → cached access token → automatic refresh.
 - По умолчанию для GigaChat используется `GigaChat-3-Ultra` и `https://api.giga.chat/v1/`; scope/endpoint/TLS CA настраиваются через env.
 - OpenAI-style registry tools конвертируются в GigaChat `functions`; runtime names с `_` получают deterministic letters-only aliases и маппятся обратно перед Pydantic validation.
 - Поддержаны object/string `function_call.arguments`, один protocol-repair turn, refresh после chat 401 и bounded retries для timeout/transport/408/429/5xx.
 - Добавлены `LLM_MAX_RETRIES`, `LLM_RETRY_BACKOFF`, `GIGACHAT_CA_BUNDLE`, `GIGACHAT_VERIFY_SSL` и Termux one-shell инструкции.
-- Добавлены 8 provider/config regression tests. Текущая среда без ChromeDriver/live network: 145 passed, 18 skipped, 0 failed в сегментированных прогонах; security baseline до этого provider-патча: 197 passed, 1 skipped, 0 failed в полностью настроенном окружении.
+- Добавлены 8 provider/config regression tests. Текущая среда без ChromeDriver/live network: 147 passed, 19 skipped, 0 failed в сегментированных прогонах; security baseline до этого provider-патча: 197 passed, 1 skipped, 0 failed в полностью настроенном окружении.
 
 ---
 

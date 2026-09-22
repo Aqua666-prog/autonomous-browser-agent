@@ -2,7 +2,7 @@
 
 ## Подготовка
 
-Установить зависимости и Chromium по README, настроить свой provider. Для текущей демонстрации предпочтителен официальный GigaChat: `LLM_PROVIDER=gigachat`, `LLM_MODEL=GigaChat-3-Ultra`, локальный `GIGACHAT_AUTH_KEY`. Сначала показать `python main.py --check-llm`, затем browser smoke. Не показывать содержимое `.env` на записи. Security baseline до provider-патча: 197 passed, 1 skipped. Текущая Termux/GigaChat ревизия: **145 passed, 18 skipped, 0 failed**; `--check-browser` PASS, `--check-llm` PASS и автономный Wikipedia E2E с GigaChat-3-Ultra — live PASS. Новые демонстрационные сценарии фиксировать только по фактическому прогону.
+Установить зависимости и Chromium по README, настроить свой provider. Для текущей демонстрации предпочтителен официальный GigaChat: `LLM_PROVIDER=gigachat`, `LLM_MODEL=GigaChat-3-Ultra`, локальный `GIGACHAT_AUTH_KEY`. Сначала показать `python main.py --check-llm`, затем browser smoke. Не показывать содержимое `.env` на записи. Security baseline до provider-патча: 197 passed, 1 skipped. Текущая Termux/GigaChat ревизия: **147 passed, 19 skipped, 0 failed**; `--check-browser` PASS, `--check-llm` PASS и автономный Wikipedia E2E с GigaChat-3-Ultra — live PASS. Новые демонстрационные сценарии фиксировать только по фактическому прогону.
 
 В отдельном терминале:
 
@@ -54,4 +54,4 @@ $env:MAX_AGENT_STEPS = "100"
 
 Формулировка на защите: «Production агент принимает решения через LLM; в коде нет маршрутов под эти сайты. Автотесты проверяют механизмы отдельно от качества модели. Live результат этой демонстрации фиксируется по факту; заранее PASS не заявляется».
 
-Wikipedia/GigaChat live E2E уже подтверждён на текущей Termux-ревизии. Сценарии магазина, почты и вакансий с реальной LLM считаются **UNVERIFIED**, пока не выполнены отдельно. Если provider/сеть/challenge не позволяют продолжить, показать точный blocked и не подменять LLM заранее написанным сценарием.
+Wikipedia/GigaChat visible live E2E подтверждён на текущей Termux-ревизии: COMPLETE за 7 шагов. Synthetic shop/GigaChat visible live E2E также подтверждён: COMPLETE за 14 шагов, 2 синих блокнота, 24 EUR, остановка перед оплатой. Реальные авторизованные сценарии почты и вакансий остаются **UNVERIFIED**, пока не выполнены отдельно. Если provider/сеть/challenge не позволяют продолжить, показать точный blocked и не подменять LLM заранее написанным сценарием.

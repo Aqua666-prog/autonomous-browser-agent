@@ -18,7 +18,10 @@
   };
   const all=[];
   const walk = root => { for(const e of root.querySelectorAll('*')) {
-    if(e.matches('a[href],button,input:not([type=hidden]),textarea,select,[role],[contenteditable=true],[tabindex]') && visible(e)) all.push(e);
+    const interactive =
+      e.matches('a[href],a[onclick],button,input:not([type=hidden]),textarea,select,[role],[contenteditable=true],[tabindex]') ||
+      (e.tagName === 'A' && getComputedStyle(e).cursor === 'pointer');
+    if(interactive && visible(e)) all.push(e);
     if(e.shadowRoot) {
       if(!window.__agentState.roots.has(e.shadowRoot)) {
         window.__agentState.roots.add(e.shadowRoot);
