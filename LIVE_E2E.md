@@ -1,41 +1,44 @@
-# LIVE_E2E — проверка текущей ревизии, 2026-09-22
+# LIVE_E2E — исторические live-результаты и текущая проверка, 2026-09-22
 
-## Что действительно запущено
+## Исторически зафиксированный Wikipedia live PASS
 
-- Настоящий Chromium/Playwright: browser integration и synthetic mail/shop/jobs, включая подтверждения и проверку результата — PASS.
-- Настоящий ChromeDriver: формы, поиск с refs, extraction, upload, tabs и stale recovery — PASS.
-- Настоящий CDP: synthetic session continuity и отключение без закрытия браузера — PASS.
-- `main.py --headless --check-browser` — PASS.
-- Полный suite: **181 passed, 1 skipped, 0 failed**.
+В переданных документах до текущего security-патча зафиксирован успешный автономный прогон с реальной OpenAI-compatible LLM: агент использовал видимый поиск Wikipedia, восстановился после stale ref и ответил **1137**, указав фактический URL статьи. Реальный LLM tool calling отдельно прошёл provider health check.
 
-Эти сценарии используют scripted providers или прямые browser primitives. Они **не являются live LLM E2E**.
+**Статус: исторический live PASS.** Результат сохранён и не отнесён к неуспешным или непроверенным историческим запускам. При этом он не является независимым повторным прогоном текущего исправленного ZIP. Отдельного подробного лога позднего запуска с model/version и хешем submission в переданном архиве нет; основание записи — ранее переданная документация. Более ранние Termux результаты находятся в docs/history.
 
-## Wikipedia — фактическая попытка
+Исторический shop LLM acceptance дошёл до browser actions и verification, затем остановился с HTTP 413. Полный live shop не считается PASS; причина 413 без исходного payload и лимитов модели не установлена.
 
-Запущено:
+## Независимая проверка исправленной ревизии без API credentials
+
+- Полный существующий suite и новые regressions: **197 passed, 1 skipped, 0 failed**.
+- Настоящие Chromium/Playwright, ChromeDriver и CDP — PASS.
+- Synthetic mail/shop/jobs — PASS, решения задают scripted providers.
+- Новые 16 regression cases закрывают upload bypass, Enter approval race и nested Shadow DOM focus на реальных browser backend.
+- `main.py --headless --check-browser` — PASS (Chromium headless, 1 вкладка, штатное закрытие).
+- `main.py --check-llm` — контролируемая ошибка отсутствующей конфигурации/ключа; реальный API не проверен.
+
+Browser primitives и scripted providers не являются live LLM E2E и не заменяют исторический автономный запуск.
+
+## Текущая внешняя Wikipedia browser-проверка
 
 ```bash
 RUN_LIVE_WIKIPEDIA=1 BROWSER_EXECUTABLE_PATH=/path/to/headless_shell \
-python -m pytest -q -rs -s tests/test_wikipedia_live.py
+python -m pytest -q -rs tests/test_wikipedia_live.py
 ```
 
-Браузер начал с единственного заданного URL `https://ru.wikipedia.org/`.
-Первый запрос завершился `net::ERR_EMPTY_RESPONSE`. Поиск, статья, год и source URL в этом окружении **не получены**. Защита не обходилась; proxy/anti-bot bypass для внешнего сайта не выполнялся. Результат opt-in теста: **1 skipped — Environment network prevents Wikipedia access**. В обычном suite этот тест skipped по opt-in настройке.
+Результат текущего запуска: **1 skipped — Environment network prevents Wikipedia access**. Сетевые ограничения не обходились. Это тест браузера без LLM; в обычном полном suite он выключен opt-in настройкой. В текущем окружении статья, год и source URL этим тестом не получены.
 
-Сам тест содержит только видимый поиск: наблюдаемый input → ввод → Enter → наблюдаемый result link при необходимости. URL статьи не конструируется. После сетевого допуска он проверяет браузерный путь; самостоятельный выбор действий LLM проверяется отдельно следующей командой.
+Для нового автономного live-прогона с собственным настроенным provider:
 
 ```text
 python main.py --task "Открой только главную страницу https://ru.wikipedia.org/. Через видимое поле поиска найди статью «Элеонора Аквитанская». Не составляй URL статьи самостоятельно. На открытой через поиск странице выясни, в каком году Элеонора стала королевой Франции, и ответь годом с фактическим URL страницы-источника."
 ```
 
-## Не проверено и не считается PASS
+## Ещё не проверено на исправленной версии
 
-- Позднее автономный Wikipedia E2E был повторён с реальным OpenAI-compatible LLM и успешно завершён: поиск выполнялся через видимый UI, runtime восстановился после stale ref, результат — 1137 с фактическим URL статьи.
-- Реальный LLM tool calling отдельно прошёл provider health check.
-- Synthetic shop LLM acceptance подтвердил реальные browser actions и verification, но полный сценарий не считается PASS: прогон был прерван внешней ошибкой provider HTTP 413.
-- Реальные авторизованные пользовательские аккаунты не проверялись.
-- Текущий патч на Android/Termux и Windows GUI.
-- Реальные почтовый аккаунт, магазин, сайт вакансий, OAuth и реальная загрузка резюме.
-- Поведение конкретного сайта при CAPTCHA/2FA. Проверены локальные handoff/safety contracts, а не все anti-bot системы.
+- Новый автономный LLM E2E текущего ZIP: в окружении нет настроенных API credentials.
+- Текущий patch на Android/Termux и Windows GUI.
+- Реальные авторизованные почта, магазин, вакансии, OAuth и реальная загрузка резюме.
+- Поведение конкретных сайтов при CAPTCHA/2FA: проверены локальные handoff contracts, не все anti-bot системы.
 
-Предыдущие Termux результаты пользователя и исторические документы не заменяют повторный прогон текущего ZIP. Перед сдачей выполните ACCEPTANCE.md.
+Отсутствие API-ключа/квоты/модели или сетевого доступа не записывается как ошибка программы. Перед демонстрацией выполните ACCEPTANCE.md и фиксируйте новый live-результат отдельно от исторического.

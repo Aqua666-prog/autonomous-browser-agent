@@ -2,7 +2,7 @@
 
 ## Подготовка
 
-Установить зависимости и Chromium по README, настроить свой LLM endpoint/key. Показать `python main.py --check-llm`, затем `python -m pytest -q`. Актуальный desktop regression результат этой ревизии: 130 passed, 1 environment-policy skipped при доступном Chromium. Не демонстрировать содержимое `.env`.
+Установить зависимости и Chromium по README, настроить свой LLM endpoint/key. Показать `python main.py --check-llm`, затем `python -m pytest -q`. Актуальный desktop regression результат этой ревизии: 197 passed, 1 skipped, 0 failed при настроенных Chromium и ChromeDriver. Не демонстрировать содержимое `.env`. В текущем независимом прогоне API credentials отсутствуют: без своего настроенного provider показывайте browser/tests, не называя их live LLM E2E. Исторический Wikipedia live PASS сохранён в LIVE_E2E.md; новая демонстрация должна иметь собственный результат.
 
 В отдельном терминале:
 

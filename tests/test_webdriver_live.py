@@ -80,3 +80,113 @@ async def test_real_webdriver_stale_target_after_async_replacement(driver_browse
     ref=target(await b.observe(),'Open')['ref']
     await b._execute_script("document.querySelector('button').textContent='Delete Account'")
     with pytest.raises(StaleRef):await b.execute('click',args('click',ref=ref))
+
+
+class AuditDecisions:
+    """Deterministic decisions for security regressions, never a live LLM claim."""
+    def __init__(self, actions): self.actions = iter(actions); self.states = []
+    async def decide(self, messages, tools):
+        from browser_agent.llm import Decision
+        state = json.loads(messages[1]['content']); self.states.append(state)
+        name, values = next(self.actions)
+        values = dict(values)
+        if 'label' in values:
+            values['ref'] = target(state['observation'], values.pop('label'))['ref']
+        if name == 'fill_form':
+            values['fields'] = [{'ref':target(state['observation'], 'Attachment')['ref'],
+                                 'kind':'text', 'value':values.pop('path')}]
+        return Decision(name, json.dumps(values))
+
+
+@pytest.mark.parametrize('tool', ['type_text', 'fill_form'])
+@pytest.mark.parametrize('through_runtime', [False, True])
+@pytest.mark.parametrize('root_enabled', [False, True])
+async def test_file_input_rejects_text_tools(driver_browser, tool, through_runtime, root_enabled):
+    from browser_agent.runtime import Runtime
+    from browser_agent.errors import BrowserActionError
+    b, root = driver_browser
+    outside = root.parent / (root.name + '-outside.txt')
+    outside.write_text('SYNTHETIC AUDIT MARKER, NOT A SECRET')
+    b.upload_root = str(root) if root_enabled else None
+    await b._execute_script("document.body.innerHTML='<label>Attachment<input type=file></label><p></p>';document.querySelector('input').onchange=async e=>{document.querySelector('p').textContent=await e.target.files[0].text()}")
+    if through_runtime:
+        approvals = []
+        async def deny(description): approvals.append(description); return False
+        values = {'label':'Attachment','text':str(outside)} if tool == 'type_text' else {'path':str(outside)}
+        provider = AuditDecisions([(tool, values), ('finish', {'status':'blocked','result':'Use the approved upload tool'})])
+        runtime = Runtime(b, provider, confirm=deny, emit=lambda *_:None)
+        result = await runtime.run('Inspect attachment field without uploading')
+        assert result.status == 'blocked' and not approvals
+        assert runtime.memory.counts[f'{tool}:error'] == 1
+        assert provider.states[1]['last_action_error']['error'] == 'PolicyError'
+        assert not runtime.memory.action_trace and runtime.pending_verification is None
+    else:
+        ref = target(await b.observe(), 'Attachment')['ref']
+        values = {'ref':ref,'text':str(outside)} if tool == 'type_text' else {
+            'fields':[{'ref':ref,'kind':'text','value':str(outside)}]}
+        with pytest.raises(BrowserActionError, match='require upload_file'):
+            await b.execute(tool, args(tool, **values))
+    assert await b._execute_script('return document.querySelector("input").files.length') == 0
+    assert await b._execute_script('return document.querySelector("p").textContent') == ''
+
+
+@pytest.mark.parametrize('attribute,value', [
+    ('action', 'https://example.test/different'), ('method', 'post'),
+])
+async def test_webdriver_enter_rejects_form_change_during_approval(driver_browser, attribute, value):
+    from browser_agent.runtime import Runtime
+    b, _ = driver_browser
+    await b._execute_script("document.body.innerHTML=arguments[0];document.querySelector('input').focus()", [
+        '''<form action="https://example.test/approved" onsubmit="event.preventDefault();document.querySelector('p').textContent='SENT'">
+        <label>Message<input></label><button>Continue</button></form><p></p>'''])
+    approvals = []
+    async def approve(description):
+        approvals.append(description)
+        await b._execute_script("document.querySelector('form').setAttribute(arguments[0],arguments[1])", [attribute,value])
+        return True
+    provider = AuditDecisions([('press_key', {'key':'Enter'}),
+                              ('finish', {'status':'blocked','result':'Form changed'})])
+    runtime = Runtime(b, provider, confirm=approve, emit=lambda *_:None)
+    result = await runtime.run('Submit only the approved form')
+    assert result.status == 'blocked' and len(approvals) == 1
+    assert await b._execute_script('return document.querySelector("p").textContent') == ''
+    assert runtime.memory.counts['press_key:error'] == 1
+    assert not runtime.memory.action_trace and runtime.pending_verification is None
+
+
+@pytest.mark.parametrize('approved', [False, True])
+async def test_webdriver_shadow_enter_confirmation_and_verification(driver_browser, approved):
+    from browser_agent.runtime import Runtime
+    b, _ = driver_browser
+    await b._execute_script('''
+      document.body.innerHTML='<div id="host" tabindex="0"></div><p id="receipt"></p>';
+      const outer=document.querySelector('#host').attachShadow({mode:'open'});
+      outer.innerHTML='<div id="inner" tabindex="0"></div>';
+      const root=outer.querySelector('#inner').attachShadow({mode:'open'});
+      root.innerHTML='<form><label>Message<input></label><button>Continue</button></form>';
+      root.querySelector('form').onsubmit=e=>{e.preventDefault();document.querySelector('#receipt').textContent='SENT'};
+      root.querySelector('input').focus();
+    ''')
+    focused = [e for e in (await b.observe())['elements'] if e.get('focused')]
+    assert len(focused) == 1 and focused[0]['name'] == 'Message' and focused[0]['form']
+    found = await b.execute('find_in_page', args('find_in_page', text='Message'))
+    assert next(e for e in found['matches'] if e['name'] == 'Message')['focused']
+    approvals = []
+    async def confirm(description): approvals.append(description); return approved
+    actions = [('press_key', {'key':'Enter'})]
+    if approved:
+        actions += [('verify_action', {'outcome':'achieved','evidence':'SENT','explanation':'Fresh submit receipt'}),
+                    ('finish', {'status':'complete','result':'Submission verified'})]
+    else:
+        actions += [('finish', {'status':'blocked','result':'User denied submission'})]
+    provider = AuditDecisions(actions)
+    runtime = Runtime(b, provider, confirm=confirm, emit=lambda *_:None)
+    result = await runtime.run('Submit after approval and verify the receipt')
+    assert len(approvals) == 1 and 'Message' in approvals[0]
+    assert await b._execute_script('return document.querySelector("#receipt").textContent') == ('SENT' if approved else '')
+    assert result.status == ('complete' if approved else 'blocked')
+    if approved:
+        assert provider.states[1]['pending_verification']['action'] == 'press_key'
+        assert runtime.memory.verifications[-1]['outcome'] == 'achieved'
+    else:
+        assert not runtime.memory.action_trace and runtime.pending_verification is None

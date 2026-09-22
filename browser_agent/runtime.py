@@ -368,6 +368,8 @@ class Runtime:
                     raise PolicyError('Human verification required')
                 target = self._action_target(name, args, snapshot)
                 targets = self._action_targets(name, args, snapshot)
+                if name in {'type_text', 'fill_form'} and any(item.get('type') == 'file' for item in targets):
+                    raise PolicyError('File inputs require upload_file with an approved upload root and confirmation')
                 if name in {'type_text', 'fill_form'} and any(
                         item.get('type') == 'password' or item.get('autocomplete') == 'one-time-code'
                         for item in targets):
@@ -632,7 +634,7 @@ class Runtime:
                             refreshed = await self.browser.observe()
                             previous = self._action_target(name, args, snapshot)
                             current = self._action_target(name, args, refreshed)
-                            fields = ('role','name','type','form','form_name')
+                            fields = ('role','name','type','form','form_name','form_action','form_method','form_role','autocomplete','href')
                             if refreshed.get('url') != snapshot.get('url') or any(previous.get(k) != current.get(k) for k in fields):
                                 raise PolicyError('Focus changed during approval')
                         human_confirmation = 'approved'

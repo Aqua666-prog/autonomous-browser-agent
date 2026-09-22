@@ -1,3 +1,16 @@
+# Исправления независимого аудита — 2026-09-22
+
+- Runtime запрещает text/batch ввод в file inputs; WebDriver дополнительно проверяет тип перед clear/send keys.
+- Подтверждённый Enter сравнивает адрес/метод формы и дополнительные поля свежего наблюдения.
+- Focus определяется до leaf во вложенном открытом Shadow DOM, включая find/collection serializers.
+- Добавлены 16 real-browser regression cases. Текущий полный результат: **197 passed, 1 skipped, 0 failed**.
+- Документы согласованы; исторический Wikipedia live PASS отделён от текущей проверки без API credentials.
+- Архитектура и существующие тестовые assertions сохранены.
+
+---
+
+История предыдущих ревизий; старые результаты ниже не описывают текущий submission.
+
 # Runtime hardening — 2026-09-22
 
 - Page-local search budget: две попытки на semantic state, bounded refinement, structured recovery; synonyms, volatile refs и replanning не обходят ограничение.
@@ -34,7 +47,7 @@
 - Context compaction теперь сохраняет более ёмкие structured extraction results и при переполнении recent history приоритетно оставляет самые свежие tool results.
 - Prompt обновлён: `verify_action` вызывается только при непустом `pending_verification`; find/fill/upload описаны как generic tools, page content остаётся untrusted.
 - Добавлены Playwright/WebDriver/unit/safety tests для поиска за пределами snapshot, form batch fill, root-scoped upload, redacted logs, human approval и snapshot-ref reuse.
-- Текущая проверка в контейнере: **130 passed, 1 skipped**; единственный skip — CDP continuity test из-за browser policy окружения (`ERR_BLOCKED_BY_ADMINISTRATOR` даже для intercepted localhost). Новые real-Chromium tests покрывают structured extraction и управление вкладками; production `--check-browser` PASS.
+- Текущая проверка в контейнере: исторический результат предыдущей ревизии (не актуальный suite); единственный skip — CDP continuity test из-за browser policy окружения (`ERR_BLOCKED_BY_ADMINISTRATOR` даже для intercepted localhost). Новые real-Chromium tests покрывают structured extraction и управление вкладками; production `--check-browser` PASS.
 
 Design references: Microsoft Playwright MCP (`browser_find`, `browser_fill_form`, `browser_file_upload`), browser-use (явный error/history state), Skyvern (generic form/validation patterns). Код не копирует их workflows и не добавляет сценарии под Gmail/HH/магазины.
 

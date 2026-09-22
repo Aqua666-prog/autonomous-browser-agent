@@ -32,10 +32,11 @@
   all.sort((a,b)=>Number(inViewport(b))-Number(inViewport(a)));
   window.__agentAllElements=all;
   window.__agentElements=all.slice(0,180);
+  // document.activeElement is a host inside Shadow DOM; follow to the focused leaf.
   const elements=window.__agentElements.map(e=>({role:role(e),name:name(e).trim().slice(0,180),
     type:e.type||null,placeholder:e.getAttribute('placeholder'),disabled:!!e.disabled||e.getAttribute('aria-disabled')==='true',
     checked:e.checked??null,selected:e.getAttribute('aria-selected'),href:e.tagName==='A'?e.href:null,
-    focused:e===document.activeElement,
+    focused:(()=>{let active=document.activeElement;while(active?.shadowRoot?.activeElement)active=active.shadowRoot.activeElement;return e===active;})(),
     form:!!e.form,
     form_method:e.form?.method||null,form_action:e.form?.action||null,
     form_role:e.form?.getAttribute('role')||null,

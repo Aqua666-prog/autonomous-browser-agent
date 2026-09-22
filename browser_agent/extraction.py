@@ -96,7 +96,7 @@ EXTRACT_COLLECTION_JS = r'''(params) => {
   const serialize=e=>({
     role:role(e),name:name(e).slice(0,180),type:e.type||null,placeholder:e.getAttribute('placeholder'),
     disabled:!!e.disabled||e.getAttribute('aria-disabled')==='true',checked:e.checked??null,selected:e.getAttribute('aria-selected'),
-    href:e.tagName==='A'?e.href:null,focused:e===document.activeElement,form:!!e.form,form_method:e.form?.method||null,form_action:e.form?.action||null,
+    href:e.tagName==='A'?e.href:null,focused:(()=>{let active=document.activeElement;while(active?.shadowRoot?.activeElement)active=active.shadowRoot.activeElement;return e===active;})(),form:!!e.form,form_method:e.form?.method||null,form_action:e.form?.action||null,
     form_role:e.form?.getAttribute('role')||null,form_name:e.form?name(e.form).slice(0,300):null,
     autocomplete:e.getAttribute('autocomplete'),file_names:e.type==='file'?Array.from(e.files||[]).slice(0,5).map(f=>f.name.slice(0,120)):null,
     value:!['password','file'].includes(e.type)&&e.getAttribute('autocomplete')!=='one-time-code'&&'value' in e?String(e.value).slice(0,4000):null,

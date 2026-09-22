@@ -1,57 +1,52 @@
-# TEST_REPORT — runtime hardening, 2026-09-22
+# TEST_REPORT — исправления независимого аудита, 2026-09-22
 
-## Фактический итог
+## Фактический итог текущей ревизии
 
-**181 passed / 1 skipped / 0 failed**, 29.79 s.
-Исходный архив без изменений в том же доступном браузерном окружении: **132 passed**, 18.72 s.
-Ни один исходный test case не удалён. Добавлено 49 проходящих случаев и один opt-in внешний тест.
+**197 passed, 1 skipped, 0 failed**. Исходный submission прошёл независимый аудит до исправлений: 181 passed, 1 skipped. Существующие assertions не удалены и не ослаблены; добавлены 16 browser-level regression cases.
 
-Окружение: Linux x86_64, Python 3.12.14; Chromium headless shell 140.0.7339.16; совместимый ChromeDriver 140.0.7339.16. Использованы зависимости существующего requirements.txt, включая Playwright 1.63.0. Его штатная загрузка браузера вернула повреждённый архив; Chromium установлен отдельно через bootstrap Playwright 1.55.0 и передан через BROWSER_EXECUTABLE_PATH. Версия Playwright в проекте не понижалась, bootstrap и бинарники не входят в ZIP.
-
-Команда полного прогона (пути замените своими):
+Окружение: Linux x86_64, Python 3.12.14, Playwright 1.63.0, Chromium headless shell 140.0.7339.16 и ChromeDriver 140.0.7339.16. Использовано существующее Python-окружение с версиями из requirements.txt. Чистая установка зависимостей с нуля не проверялась. Штатный загрузчик Playwright ранее получал повреждённый browser ZIP; Chromium установлен отдельно штатным bootstrap Playwright 1.55.0. Production Playwright не понижался; bootstrap, браузер и driver не входят в submission.
 
 ```bash
 CHROMEDRIVER_EXECUTABLE_PATH=/path/to/chromedriver \
-BROWSER_EXECUTABLE_PATH=/path/to/headless_shell python -m pytest -q
+BROWSER_EXECUTABLE_PATH=/path/to/headless_shell python -m pytest -q -rs
 ```
 
-Без CHROMEDRIVER_EXECUTABLE_PATH два real WebDriver теста будут skipped, а не проверены. При отсутствии browser binary browser tests завершаются ошибкой, а не маскируются skip.
+Без driver/binary env vars 14 real WebDriver cases пропускаются, а не считаются проверенными. Единственный skip в указанном полном прогоне — opt-in Wikipedia smoke. При отсутствующем Chromium Playwright tests сообщают ошибку запуска, не PASS.
 
-| Проверка | Фактический результат |
+## Три исправления и их воспроизведение
+
+До правок повторены исходные независимые reproducers: **4 воспроизведения, 2 нерелевантных случая deselected**. Четыре случая соответствуют трём дефектам: upload через type_text и fill_form, изменение form action при Enter approval, отправка Enter внутри Shadow DOM. PASS в том baseline означал успешное воспроизведение дефекта.
+
+1. **Upload bypass.** Runtime отклоняет type_text/fill_form для input[type=file]. WebDriver дополнительно отклоняет такой target перед clear/send keys после resolve с проверкой текущего типа. Разрешённый путь — upload_file с upload-root, confirmation и verification. Восемь новых real ChromeDriver cases проверяют обе команды через runtime и непосредственно backend, с включённым и отключённым upload-root. Ни файл, ни его содержимое не становятся доступны странице.
+2. **Enter approval race.** Повторная проверка после confirmation сравнивает form_action, form_method, form_role, autocomplete и href в дополнение к прежним полям. Четыре cases проверяют смену action/method на Playwright и WebDriver: submit не происходит, pending/trace не создаются.
+3. **Shadow DOM focus.** Observer и сериализация find/collection следуют по shadowRoot.activeElement до focused leaf. Четыре cases используют два вложенных открытых shadow roots на обоих backend. После отказа Enter не отправляет форму; после разрешения submit происходит и требует свежего verify_action. Отдельно внутри этих cases проверен focused flag в find_in_page.
+
+Новые cases добавлены в `tests/test_browser_regressions.py` (4) и `tests/test_webdriver_live.py` (12). Это scripted decisions + реальный браузер, не реальные LLM решения.
+
+## Что независимо проверено в текущем окружении
+
+| Проверка | Результат |
 |---|---|
-| Исходный core/safety/WebDriver mock baseline | 106 passed |
-| Исходный полный baseline после установки браузера | 132 passed |
-| Итоговый полный suite | 181 passed, 1 skipped, 0 failed |
-| Playwright: наблюдение, find, extraction, формы, upload, вкладки | PASS, настоящий Chromium |
-| CDP: подключение, synthetic localStorage continuity, disconnect без закрытия | PASS, настоящий Chromium process |
-| WebDriver: find → ref → type, значения полей, collection, upload, tabs, stale target | PASS, настоящий ChromeDriver, два test case |
-| Runtime mail: 10 сообщений, чтение/кандидат/confirmation/delete/verify | PASS, scripted provider + настоящий браузер |
-| Runtime shop: variant/qty/24 EUR/checkout, запрет оплаты | PASS, scripted provider + настоящий браузер |
-| Runtime jobs: три вакансии/три письма/три confirmation/три receipt | PASS, scripted provider + настоящий браузер |
-| Production CLI `main.py --headless --check-browser` | PASS |
-| Wikipedia visible UI external browser smoke | Попытка выполнена; сеть вернула ERR_EMPTY_RESPONSE до загрузки главной |
-| Live LLM / `--check-llm` | НЕ ЗАПУСКАЛОСЬ: нет настроенного ключа провайдера |
-| Windows/CDP и реальные authenticated accounts | НЕ ПРОВЕРЕНЫ |
+| Полный suite | 197 passed, 1 skipped, 0 failed |
+| Playwright: DOM, поиск, формы, extraction, upload, вкладки | PASS |
+| ChromeDriver: обычный разрешённый upload, формы, поиск, tabs, stale refs | PASS |
+| Новые upload / approval race / nested Shadow DOM regressions | 16 passed в полном suite |
+| CDP: подключение, synthetic localStorage continuity, отключение без закрытия браузера | PASS |
+| Synthetic mail/shop/jobs и verification | PASS, scripted providers |
+| CLI `main.py --headless --check-browser` | PASS (Chromium headless, 1 вкладка, штатное закрытие) |
+| CLI `main.py --check-llm` | контролируемая ошибка отсутствующей конфигурации/ключа; реальный API не проверен |
+| Opt-in Wikipedia browser smoke | 1 skipped — Environment network prevents Wikipedia access |
 | compileall | PASS |
-| Ruff F821/F822/F823 | PASS; это targeted static checks, не полный style/security audit |
-| Release secret scan | PASS по правилам scripts/release.py; нестандартные секреты не гарантированно распознаются |
+| Secret/repository scan | PASS: release scanner и проверка состава submission; реальных секретов не обнаружено |
 
-## Исправления, подтверждённые тестами
+## Исторически зафиксированный live-результат
 
-1. **Поисковый synonym loop.** Общий budget на semantic fingerprint; два find максимум. Success требует действия/inspection перед повтором либо ограниченного refinement_reason. Zero-match synonyms также расходуют budget. Ref generation, расширение snapshot и planning не увеличивают его. Новое состояние даёт новый budget. Последовательное игнорирование recovery останавливает run.
-2. **Focus verification.** `expected_outcome` сам по себе больше не создаёт pending для search/focus/menu/navigation. Проверены настоящий focus-only click, no-DOM interaction и guard для consequential controls.
-3. **Business safety.** Send/delete/payment/application controls и native submit защищены confirmation/verification. Кнопка Submit application вне формы теперь тоже распознаётся. Timeout хранит uncertainty и action trace; duplicate verify и no-pending loop ограничены.
-4. **Refs/approval race.** Find/collection refs работают на следующем decision без observe. Несвязанный DOM churn допустим; relabel/detach, смена окна и form destination инвалидируют target. Смена action формы во время подтверждения блокирует dispatch.
-5. **Forms.** Обычные значения видимы; password/OTP values скрыты. Native checkbox/radio/select, required, readonly, validation, простое datalist autocomplete проверены. Dynamic replacement останавливает batch; продолжение использует fresh refs. Select label больше не включает option text.
-6. **Extraction.** Таблица из 10 писем, карточки товаров и вакансий получают только наблюдаемые fields/times и actionable controls. Parent wrappers с несколькими records отсекаются. Две recent collection-выборки не исчезают при обычном вытеснении history.
-7. **Upload.** Schema и resolver запрещают absolute/traversal/control-character paths; symlink escape и размер проверяются. Confirmation всегда обязателен. Имя нужного файла проверяется в текущем UI.
-8. **Tabs.** Старый index не закрывает другую вкладку после изменения списка. WebDriver refs привязаны к окну. Несколько новых окон не трактуются как упорядоченная последовательность popup. Loopback ChromeDriver не отправляется в ambient proxy.
-9. **Injection.** Шесть размещений hostile text: heading, button, mail body, product, job и semantic region. Runtime сохраняет confirmation denial, отвергает shell и path traversal. Это проверка барьеров при враждебных decisions, а не доказательство устойчивости конкретной LLM.
+До этого патча в переданных README/LIVE_E2E зафиксированы успешные реальный OpenAI-compatible provider health check и автономный Wikipedia visible-UI E2E: поиск, stale-ref recovery, ответ **1137** с фактическим URL статьи. Этот исторический live PASS сохранён. Он не является новым независимым прогоном исправленного submission. Подробного отдельного лога того позднего запуска с привязкой к хешу архива в исходном ZIP нет.
 
-Один исходный upload privacy test уточнён: теперь он требует basename в интерактивном confirmation, поскольку человек должен знать, какой файл разрешает. Одновременно он проверяет отсутствие каталогов в confirmation и отсутствие имени/пути в обычных logs. Тест не удалён и не ослаблен до простого PASS.
+Ранее live shop дошёл до browser actions/verification, затем остановился с HTTP 413; полный live shop PASS не заявляется. Без лимитов модели и исходного запроса нельзя установить, был ли 413 вызван лимитом провайдера или слишком большим payload. Исторические Termux прогоны сохранены в docs/history и не подменяют текущие результаты.
 
-## Промежуточные ошибки и ограничения результатов
+## Границы проверки
 
-Первый полный запуск без установленного Chromium: 106 passed, 2 failed, 24 setup errors (отсутствующий executable). После установки браузера исходный suite целиком прошёл. Новые тесты выявляли и исправляли runtime/label/proxy/approval проблемы; итог выше относится к последнему коду, а не к промежуточным результатам.
+Без настроенных API credentials текущий автономный LLM E2E не подтверждён. Недоступность модели/сети не считается дефектом программы. Windows GUI, текущий Android/Termux, реальные авторизованные аккаунты, OAuth и полный набор CAPTCHA/2FA не проверены. Существующие unit/integration tests подтверждают контракты, а не качество классификации спама или выбора вакансий реальной моделью.
 
-Scripted providers задают решения в test code и не импортируются production runtime. Они доказывают работу browser/runtime-контрактов и safety gates, но не автономную классификацию спама, подбор вакансий или устойчивость модели к смысловой инъекции. Полный live acceptance с вашим provider остаётся обязательным перед сдачей. Порядок ручной проверки — в ACCEPTANCE.md.
+Native JavaScript confirm/prompt по-прежнему отклоняются автоматически; инструмента accept-dialog нет. После not_achieved общий finish complete остаётся решением LLM. Эти ограничения предыдущего аудита не входят в три запрошенных исправления. Символьные лимиты контекста не гарантируют совместимость с любой моделью. Общая невосприимчивость к prompt injection и произвольным изменениям JavaScript страницы не заявляется. Ruff/CVE/SCA scan в этом прогоне не выполнялись.

@@ -6,9 +6,12 @@
 
 | Требование | Реализация / фактическая проверка | Статус |
 |---|---|---|
-| Текущая regression suite | 130 passed, 1 environment-policy skip; исходные assertions сохранены и расширены | automated PASS |
+| Текущая regression suite | 197 passed, 1 skipped, 0 failed; исходные assertions сохранены, добавлены 16 regression cases | automated PASS |
 | Поиск в большом semantic snapshot | `find_in_page` находит control за пределами первых 180 и возвращает actionable ref | automated PASS |
 | Batch form fill | text + select через `fill_form`, значения не логируются | automated PASS |
+| Обход upload через text/batch | 8 real WebDriver cases: runtime/backend, root enabled/disabled | automated PASS |
+| Enter approval race | 4 cases: смена action/method блокирует submit на обоих backend | automated PASS |
+| Nested Shadow DOM Enter | 4 cases: denial запрещает submit; approval требует verification | automated PASS |
 | Безопасный file upload | только `BROWSER_UPLOAD_ROOT`, traversal/absolute paths запрещены, confirmation + `file_names` verification | automated PASS |
 | Корзина: вариант, количество, сумма | Реальный DOM, Large × 2 = 24 EUR, отдельное verify_action | automated PASS |
 | Почта: анализ → подтверждение → удаление | Синтетический DOM, remember до подтверждения, 10 → 9 писем | automated PASS |
@@ -20,7 +23,8 @@
 | Prompt injection | Статический system policy, отказ confirmation, запрет неизвестного tool, untrusted provenance | automated PASS для перечисленных механизмов, не универсальная гарантия |
 | Длинная задача | 108 шагов; первоначальная цель, план, 12 ответов, 24 факта сохранены | automated PASS |
 | CDP attach/detach | Chromium process + synthetic localStorage, повторное подключение, браузер не закрыт | automated PASS |
-| Реальная LLM на новой версии | Нет настроенного provider/key в окружении | UNVERIFIED |
+| Исторический Wikipedia live E2E | До патча зафиксированы видимый поиск, stale recovery, 1137 и URL; см. LIVE_E2E.md | historical live PASS |
+| Новый LLM E2E исправленного ZIP | Нет настроенных API credentials; исторический PASS не является текущим rerun | UNVERIFIED |
 | Реальные авторизованные почта/магазин/вакансии | Нет аккаунтов и участия пользователя в GUI | UNVERIFIED |
 | Termux baseline входной Work-версии | browser/LLM PASS, 80 passed / 2 skipped, Wikipedia visible-UI E2E PASS; текущий patch требует rerun | baseline live PASS / latest patch UNVERIFIED |
 

@@ -258,3 +258,63 @@ async def test_changed_form_destination_during_confirmation_rejects_dispatch(bro
     assert (await r.run('Send after approval')).status=='blocked'
     assert r.memory.counts['click:error']==1 and r.pending_verification is None
     assert not r.memory.action_trace
+
+
+@pytest.mark.parametrize('attribute,value', [
+    ('action', 'https://example.test/different'), ('method', 'post'),
+])
+async def test_enter_rejects_form_change_during_approval(browser, attribute, value):
+    # Adapted from the independent audit reproducer; no external request is sent.
+    await browser.page.set_content('''<form action="https://example.test/approved"
+      onsubmit="event.preventDefault();document.querySelector('p').textContent='SENT'">
+      <label>Message<input></label><button>Continue</button></form><p></p>''')
+    await browser.page.locator('input').focus()
+    approvals = []
+    async def approve(description):
+        approvals.append(description)
+        await browser.page.locator('form').evaluate('(f, change)=>f.setAttribute(...change)', [attribute, value])
+        return True
+    provider = ScriptedStand([('press_key', {'key':'Enter'}),
+                              ('finish', {'status':'blocked','result':'Form changed during approval'})])
+    runtime = Runtime(browser, provider, confirm=approve, emit=lambda *_:None)
+    result = await runtime.run('Submit only the approved form')
+    assert result.status == 'blocked' and len(approvals) == 1
+    assert await browser.page.locator('p').inner_text() == ''
+    assert runtime.memory.counts['press_key:error'] == 1
+    assert runtime.pending_verification is None and not runtime.memory.action_trace
+
+
+@pytest.mark.parametrize('approved', [False, True])
+async def test_shadow_enter_requires_confirmation_and_verification(browser, approved):
+    await browser.page.set_content('<div id="host" tabindex="0"></div><p id="receipt"></p>')
+    await browser.page.evaluate('''() => {
+      const outer=document.querySelector('#host').attachShadow({mode:'open'});
+      outer.innerHTML='<div id="inner" tabindex="0"></div>';
+      const root=outer.querySelector('#inner').attachShadow({mode:'open'});
+      root.innerHTML='<form><label>Message<input></label><button>Continue</button></form>';
+      root.querySelector('form').onsubmit=e=>{e.preventDefault();document.querySelector('#receipt').textContent='SENT'};
+      root.querySelector('input').focus();
+    }''')
+    snapshot = await browser.observe()
+    focused = [e for e in snapshot['elements'] if e.get('focused')]
+    assert len(focused) == 1 and focused[0]['name'] == 'Message' and focused[0]['form']
+    found = await browser.execute('find_in_page', args('find_in_page', text='Message'))
+    assert next(e for e in found['matches'] if e['name'] == 'Message')['focused']
+    approvals = []
+    async def confirm(description): approvals.append(description); return approved
+    actions = [('press_key', {'key':'Enter'})]
+    if approved:
+        actions += [verification('SENT'), END]
+    else:
+        actions += [('finish', {'status':'blocked','result':'User denied submission'})]
+    provider = ScriptedStand(actions)
+    runtime = Runtime(browser, provider, confirm=confirm, emit=lambda *_:None)
+    result = await runtime.run('Submit only after approval; verify the receipt')
+    assert len(approvals) == 1 and 'Message' in approvals[0]
+    assert await browser.page.locator('#receipt').inner_text() == ('SENT' if approved else '')
+    assert result.status == ('complete' if approved else 'blocked')
+    if approved:
+        assert provider.states[1]['pending_verification']['action'] == 'press_key'
+        assert runtime.memory.verifications[-1]['outcome'] == 'achieved'
+    else:
+        assert not runtime.memory.action_trace and runtime.pending_verification is None
