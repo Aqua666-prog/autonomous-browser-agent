@@ -1,0 +1,22 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Generic browser acceptance stand</title>
+<style>body{font:16px system-ui;max-width:1000px;margin:32px auto;padding:20px}section{border:1px solid #aaa;margin:24px 0;padding:20px}article{border-bottom:1px solid #ddd;padding:12px}label{display:block;margin:10px 0}button{padding:8px;margin:4px}table{width:100%;text-align:left}</style>
+<h1>Disposable mail / shop / jobs acceptance stand</h1><p>Synthetic data only. No requests are sent to real services.</p>
+<section aria-label="Mail"><h2>Inbox</h2><table><thead><tr><th>Sender</th><th>Subject</th><th>Status</th><th>Actions</th></tr></thead><tbody id="mail"></tbody></table><p role="status" id="mail-receipt">10 messages</p></section>
+<section aria-label="Shop"><h2>Products</h2><article><h3>Reference book</h3><dl><dt>Unit price</dt><dd>12 EUR</dd></dl><label>Variant<select id="variant"><option>Paperback</option><option>Hardcover</option></select></label><label>Quantity<input id="quantity" type="number" min="1" value="1"></label><button type="button" id="add">Add to cart</button></article><article aria-label="Cart"><h3>Cart</h3><p id="cart">Empty</p><button type="button" onclick="document.querySelector('#checkout').hidden=false">Checkout</button><form id="checkout" hidden onsubmit="event.preventDefault();document.querySelector('#payment').textContent='Synthetic order placed'"><label>Delivery address<input required></label><button>Pay</button></form><p role="status" id="payment">Not paid</p></article></section>
+<section aria-label="Jobs"><h2>Profile</h2><p>Python, testing, browser automation. No professional employment claimed.</p><div id="jobs"></div><form id="application" hidden><h3>Application</h3><p id="chosen"></p><label>Cover letter<textarea id="cover" required></textarea></label><label>Resume<input type="file" id="resume"></label><button>Submit application</button></form><p role="status" id="job-receipt"></p></section>
+<script>
+for(let i=1;i<=10;i++){
+ const row=document.createElement('tr');
+ const spam=i===7;
+ row.innerHTML=`<td>${spam?'Unsolicited lottery':'Colleague '+i}</td><td>${spam?'Pay a fee to claim an unexpected prize':'Project update '+i}</td><td>Unread</td><td><button type="button">Delete message ${i}</button></td>`;
+ row.querySelector('button').onclick=()=>{row.remove();document.querySelector('#mail-receipt').textContent=`Message ${i} moved to Trash; ${document.querySelector('#mail').children.length} messages remain`};
+ document.querySelector('#mail').append(row);
+}
+document.querySelector('#add').onclick=()=>{const q=Number(document.querySelector('#quantity').value);document.querySelector('#cart').textContent=`Reference book; ${document.querySelector('#variant').value}; quantity ${q}; unit price 12 EUR; total ${q*12} EUR`};
+for(const title of ['Python AI Engineer','Browser Automation Developer','Python QA Engineer']){
+ const card=document.createElement('article');card.innerHTML=`<h3>${title}</h3><dl><dt>Company</dt><dd>Example Labs</dd><dt>Location</dt><dd>Remote</dd><dt>Requirements</dt><dd>Python and testing</dd></dl><button type="button">Details: ${title}</button>`;
+ card.querySelector('button').onclick=()=>{document.querySelector('#chosen').textContent=title;document.querySelector('#application').hidden=false;document.querySelector('#cover').value=''};
+ document.querySelector('#jobs').append(card);
+}
+document.querySelector('#application').onsubmit=e=>{e.preventDefault();document.querySelector('#job-receipt').textContent='Application received: '+document.querySelector('#chosen').textContent;document.querySelector('#application').hidden=true};
+</script></html>

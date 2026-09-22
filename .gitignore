@@ -1,0 +1,35 @@
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+.pytest_cache/
+logs/
+traces/
+profiles/
+.cache/
+.idea/
+.vscode/
+*.pyc
+*.log
+
+# Browser authentication/session artifacts
+browser-profile/
+.chrome-profile/
+storage-state*.json
+*storage_state*.json
+
+# Release/build output and temporary editor files
+release/
+dist/
+*.zip
+*.bak
+*.backup
+*~
+*.swp
+cookies*.json
+cookies*.txt
+*.har
+.auth/
+playwright-report/
+test-results/
