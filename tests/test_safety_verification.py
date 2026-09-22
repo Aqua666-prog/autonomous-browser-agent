@@ -359,3 +359,120 @@ async def test_upload_confirmation_cannot_be_disabled_by_none_mode():
         confirmation_mode='none',
     )
     assert result.status=='blocked' and not b.calls and len(approvals)==1
+
+
+async def test_invalid_verification_evidence_gives_actionable_recovery():
+    b = Browser()
+
+    result, r, p = await run(
+        b,
+        [
+            ('click', {'ref':'s1e0'}),
+            verify('Invented receipt that is not on the page'),
+            finish('blocked'),
+        ],
+    )
+
+    assert result.status == 'blocked'
+    assert r.pending_verification
+    assert r.memory.counts['verify_action:error'] == 1
+
+    # The next model turn must receive explicit recovery guidance rather than
+    # only a generic action-failed message.
+    payload = p.payloads[2]
+    failed = payload['last_action_error']
+
+    assert failed['tool'] == 'verify_action'
+    assert failed['error'] == 'PolicyError'
+    assert failed['policy_detail'] == 'Evidence is not in the current observation'
+    assert failed['recovery']['reason'] == 'InvalidVerificationEvidence'
+    assert 'exact literal quotation' in failed['message']
+    assert 'Do not paraphrase or invent evidence' in failed['message']
+
+
+def test_get_search_form_submit_without_explicit_search_role_is_not_consequential():
+    b = Browser(
+        label='Найти',
+        type='submit',
+        form=True,
+        form_role=None,
+        form_method='get',
+        form_action='https://example.test/w/index.php',
+        form_name='Найти',
+    )
+    search_input = {
+        'ref':'s1e1',
+        'role':'combobox',
+        'name':'Искать',
+        'type':'search',
+        'form':True,
+        'form_role':None,
+        'form_method':'get',
+        'form_action':'https://example.test/w/index.php',
+        'form_name':'Найти',
+    }
+
+    r = Runtime(b, Provider([]))
+    snap = {'elements':[search_input, b.target]}
+    args = parse_call(
+        'click',
+        '{"ref":"s1e0","expected_outcome":"Show search results"}'
+    )
+
+    assert not r._needs_confirmation('click', args, snap)
+    assert not r._important('click', args, snap)
+
+
+def test_post_submit_with_search_input_remains_consequential():
+    b = Browser(
+        label='Найти',
+        type='submit',
+        form=True,
+        form_role=None,
+        form_method='post',
+        form_action='https://example.test/search',
+        form_name='Найти',
+    )
+    search_input = {
+        'ref':'s1e1',
+        'role':'combobox',
+        'name':'Искать',
+        'type':'search',
+        'form':True,
+        'form_role':None,
+        'form_method':'post',
+        'form_action':'https://example.test/search',
+        'form_name':'Найти',
+    }
+
+    r = Runtime(b, Provider([]))
+    snap = {'elements':[search_input, b.target]}
+    args = parse_call(
+        'click',
+        '{"ref":"s1e0","expected_outcome":"Show results"}'
+    )
+
+    assert r._needs_confirmation('click', args, snap)
+    assert r._important('click', args, snap)
+
+
+def test_get_submit_without_matching_search_input_remains_consequential():
+    b = Browser(
+        label='Continue',
+        type='submit',
+        form=True,
+        form_role=None,
+        form_method='get',
+        form_action='https://example.test/action',
+        form_name='Continue',
+    )
+
+    r = Runtime(b, Provider([]))
+    snap = {'elements':[b.target]}
+    args = parse_call(
+        'click',
+        '{"ref":"s1e0","expected_outcome":"Continue"}'
+    )
+
+    assert r._needs_confirmation('click', args, snap)
+    assert r._important('click', args, snap)

@@ -259,6 +259,17 @@ class Runtime:
             (name == 'press_key' and args.key == 'Enter')
         )
         search_form = target.get('form_role') == 'search' or target.get('type') == 'search'
+        if submit and not search_form and str(target.get('form_method') or '').lower() == 'get':
+            form_action = target.get('form_action')
+            form_name = target.get('form_name')
+            search_form = any(
+                e.get('type') == 'search'
+                and e.get('form')
+                and str(e.get('form_method') or '').lower() == 'get'
+                and e.get('form_action') == form_action
+                and e.get('form_name') == form_name
+                for e in snapshot.get('elements', [])
+            )
         risk_words = any(word in haystack for word in self.RISK_WORDS if word != 'submit')
         risk_words = risk_words or ('submit' in str(target.get('name', '')).lower() and not search_form)
         return (submit and not search_form) or risk_words
@@ -758,6 +769,21 @@ class Runtime:
                     self.last_transition = (entry, self._fingerprint(snapshot))
                 if isinstance(exc, StaleRef):
                     result['recovery'] = {'reason': 'StaleRef', 'next_action': 'Use a ref from the next fresh observation; previous refs are invalid.'}
+                elif isinstance(exc, PolicyError) and str(exc) == 'Evidence is not in the current observation':
+                    result['message'] = (
+                        'Verification evidence must be an exact literal quotation from the CURRENT '
+                        'observation or a current read_page result. Do not paraphrase or invent evidence. '
+                        'Inspect the fresh page with read_page, find_in_page, scroll, or wait if needed; '
+                        'then verify using text that is visibly present. If no proof is available, do not '
+                        'repeat the same verify_action.'
+                    )
+                    result['recovery'] = {
+                        'reason': 'InvalidVerificationEvidence',
+                        'next_action': (
+                            'Inspect fresh current-page evidence, then use an exact literal quotation '
+                            'for verify_action; otherwise finish blocked.'
+                        ),
+                    }
                 failures += 1
                 if isinstance(exc, MalformedDecision):
                     self.emit('RECOVERY', f'MalformedDecision: {exc}')

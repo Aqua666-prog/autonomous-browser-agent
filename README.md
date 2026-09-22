@@ -2,7 +2,7 @@
 
 Продолжение существующего проекта из `browser-agent-current-for-fix.zip`. Python 3.11+, проверено на Python 3.12. Агент получает задачу естественным языком и выполняет цикл `observe → decide → act → observe`. Решение на каждом шаге принимает LLM через tool calling. Код не содержит сценариев, селекторов или ответов под конкретные сайты.
 
-Текущая ревизия минимально исправляет три дефекта независимого аудита: обход upload-защиты через текстовые tools WebDriver, смену form_action при подтверждённом Enter и потерю focused element внутри Shadow DOM. Архитектура сохранена. Независимый полный прогон: **197 passed, 1 skipped, 0 failed**, включая настоящие Chromium, ChromeDriver и synthetic CDP; подробности — в `TEST_REPORT.md`.
+Текущая ревизия сохраняет security-fix baseline и добавляет официальный `GigaChat` provider без изменения архитектуры Runtime/browser backends. Адаптер автоматически получает и обновляет access token, поддерживает GigaChat custom function calling, нормализует tool names/arguments и повторяет временные сетевые сбои. До provider-патча security baseline был независимо проверен как **197 passed, 1 skipped, 0 failed**. Для текущего provider-патча в этом окружении выполнены сегментированные regression-прогоны без падений: **145 passed, 18 skipped**; skips — отсутствующий ChromeDriver/live Wikipedia и один environment-dependent browser case. Подробности — в `TEST_REPORT.md`.
 
 **Исторический live PASS:** до этого патча с реальной OpenAI-compatible LLM успешно выполнен Wikipedia visible-UI E2E — поиск, stale-ref recovery, ответ 1137 с фактическим URL статьи; отдельно зафиксирован provider health check PASS. Основание — переданная документация предыдущего запуска. Это не новый независимый прогон исправленного ZIP: в текущем окружении нет настроенных API credentials, а внешний Wikipedia smoke ограничен сетью. Исторический shop остановился с HTTP 413 и не считается полным live PASS. Разделение результатов — в `LIVE_E2E.md`.
 
@@ -18,7 +18,7 @@ Copy-Item .env.example .env
 notepad .env
 ```
 
-В `.env` укажите реальный provider/model/base URL и собственный API key. Поддерживаются Z.AI и OpenAI-compatible tool-calling endpoints. Пример с Z.AI уже есть в `.env.example`; модель должна быть доступна вашему аккаунту. Ключ хранится только локально, не отправляйте `.env` работодателю. Альтернатива — защищённый запрос ключа при запуске. Для локального сервера без аутентификации: `LLM_PROVIDER=openai_compatible`, его URL/модель и `LLM_API_KEY_REQUIRED=false`.
+В `.env` укажите provider/model и локальные credentials. Поддерживаются официальный GigaChat REST API, Z.AI и OpenAI-compatible tool-calling endpoints. `.env.example` теперь по умолчанию показывает `GigaChat-3-Ultra`: задайте `GIGACHAT_AUTH_KEY`, а access token агент получит и обновит сам. На системах, где не доверен сертификатный корень GigaChat, используйте `GIGACHAT_CA_BUNDLE`; подробности — `docs/GIGACHAT.md`. Секреты храните только локально и не включайте `.env` в submission. Для локального сервера без аутентификации остаётся `LLM_PROVIDER=openai_compatible`, его URL/модель и `LLM_API_KEY_REQUIRED=false`.
 
 ```powershell
 .\.venv\Scripts\python.exe main.py --check-browser --headless
@@ -30,6 +30,20 @@ notepad .env
 `--check-browser` не требует LLM-ключа, наблюдает браузер без навигации. `--check-llm` проверяет реальный вызов tool у настроенного provider. Exit code: 0 — complete/PASS; 2 — blocked/ошибка. `Ctrl+C` останавливает выполнение. `HEADLESS=false` — видимый браузер для ручного входа и handoff. `.env.example` задаёт 100 шагов; допустимый `MAX_AGENT_STEPS` — 1–200, внутренний default без env — 30.
 
 Linux/macOS: `python3 -m venv .venv`, затем `.venv/bin/python -m pip install -r requirements.txt`, `.venv/bin/python -m playwright install chromium`. На минимальном Linux могут понадобиться системные библиотеки браузера: `python -m playwright install --with-deps chromium`.
+
+
+### GigaChat quick check
+
+```dotenv
+LLM_PROVIDER=gigachat
+LLM_MODEL=GigaChat-3-Ultra
+LLM_BASE_URL=https://api.giga.chat/v1/
+GIGACHAT_AUTH_KEY=<ваш Authorization key>
+GIGACHAT_SCOPE=GIGACHAT_API_PERS
+MODEL_TIMEOUT=180
+```
+
+`python main.py --check-llm` выполняет настоящий function-calling smoke. GigaChat access token действует ограниченное время; provider кэширует его и автоматически обновляет. Runtime tool names с `_` преобразуются только на границе provider в документированные letters-only aliases и после ответа отображаются обратно. См. `docs/GIGACHAT.md`.
 
 ## Реальный Chrome и уже авторизованная сессия — CDP
 

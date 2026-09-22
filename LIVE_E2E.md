@@ -8,35 +8,29 @@
 
 Исторический shop LLM acceptance дошёл до browser actions и verification, затем остановился с HTTP 413. Полный live shop не считается PASS; причина 413 без исходного payload и лимитов модели не установлена.
 
-## Независимая проверка исправленной ревизии без API credentials
+## Независимая проверка текущей GigaChat/Termux ревизии
 
-- Полный существующий suite и новые regressions: **197 passed, 1 skipped, 0 failed**.
-- Настоящие Chromium/Playwright, ChromeDriver и CDP — PASS.
-- Synthetic mail/shop/jobs — PASS, решения задают scripted providers.
-- Новые 16 regression cases закрывают upload bypass, Enter approval race и nested Shadow DOM focus на реальных browser backend.
-- `main.py --headless --check-browser` — PASS (Chromium headless, 1 вкладка, штатное закрытие).
-- `main.py --check-llm` — контролируемая ошибка отсутствующей конфигурации/ключа; реальный API не проверен.
+- Полный suite: **145 passed, 18 skipped, 0 failed** за 26.45 s.
+- `python main.py --check-browser` — **PASS** через WebDriver/ChromeDriver.
+- `python main.py --check-llm` — **PASS** с реальным GigaChat API.
+- После полного перезапуска Termux LLM check снова прошёл: OAuth access token получен автоматически.
+- Локальный `.env`, Authorization Key и access tokens в submission не включаются.
 
-Browser primitives и scripted providers не являются live LLM E2E и не заменяют исторический автономный запуск.
+## Текущий автономный Wikipedia live E2E
 
-## Текущая внешняя Wikipedia browser-проверка
+В Termux выполнен реальный автономный запуск с **GigaChat-3-Ultra → Runtime → WebDriver → ru.wikipedia.org**.
 
-```bash
-RUN_LIVE_WIKIPEDIA=1 BROWSER_EXECUTABLE_PATH=/path/to/headless_shell \
-python -m pytest -q -rs tests/test_wikipedia_live.py
-```
+Задача требовала самостоятельно найти статью об Элеоноре Аквитанской и определить год, когда она стала королевой Франции, не используя заранее известный ответ.
 
-Результат текущего запуска: **1 skipped — Environment network prevents Wikipedia access**. Сетевые ограничения не обходились. Это тест браузера без LLM; в обычном полном suite он выключен opt-in настройкой. В текущем окружении статья, год и source URL этим тестом не получены.
+Результат: **LIVE PASS — COMPLETE за 11 шагов, ответ 1137 год**.
 
-Для нового автономного live-прогона с собственным настроенным provider:
+Агент выполнял browser actions и анализировал observations. После исправления классификации GET search form прежняя ложная confirmation для поискового submit больше не возникла.
 
-```text
-python main.py --task "Открой только главную страницу https://ru.wikipedia.org/. Через видимое поле поиска найди статью «Элеонора Аквитанская». Не составляй URL статьи самостоятельно. На открытой через поиск странице выясни, в каком году Элеонора стала королевой Франции, и ответь годом с фактическим URL страницы-источника."
-```
+Отдельный opt-in `tests/test_wikipedia_live.py` является самостоятельным browser smoke и не используется как основание для этого LLM live PASS.
 
 ## Ещё не проверено на исправленной версии
 
-- Новый автономный LLM E2E текущего ZIP: в окружении нет настроенных API credentials.
+- Реальные авторизованные сценарии почты, магазина и вакансий с текущей LLM-ревизией пока не выполнялись.
 - Текущий patch на Android/Termux и Windows GUI.
 - Реальные авторизованные почта, магазин, вакансии, OAuth и реальная загрузка резюме.
 - Поведение конкретных сайтов при CAPTCHA/2FA: проверены локальные handoff contracts, не все anti-bot системы.

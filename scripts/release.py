@@ -26,6 +26,7 @@ PATTERNS = {
     'private key': re.compile(r'-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----'),
     'credential URL': re.compile(r"""https?://[^\s/:"']+:[^\s/@"']+@[^\s"'<>]+"""),
     'JWT token': re.compile(r'\beyJ[A-Za-z0-9_-]{15,}\.[A-Za-z0-9_-]{15,}\.[A-Za-z0-9_-]{15,}'),
+    'JWE token': re.compile(r'\beyJ[A-Za-z0-9_-]{15,}(?:\.[A-Za-z0-9_-]{1,}){4}'),
 }
 # Deliberately fake credential URL used to prove rejection by URL validation.
 TEST_FIXTURES = {'tests/test_core.py': {'https://' + 'secret:password@' + 'example.org'}}
@@ -54,8 +55,8 @@ def scan(selected):
                 findings.append(f'{rel}: {label}')  # Never print potential secret values.
         if rel.name == '.env.example':
             for line in text.splitlines():
-                if re.match(r'^(?:LLM|ZAI)_API_KEY\s*=\s*\S',line):
-                    findings.append('.env.example: nonempty API key')
+                if re.match(r'^(?:(?:LLM|ZAI)_API_KEY|GIGACHAT_AUTH_KEY)\s*=\s*\S',line):
+                    findings.append('.env.example: nonempty API/authorization key')
     if findings: raise ValueError('Release scan failed:\n'+'\n'.join(findings))
 
 

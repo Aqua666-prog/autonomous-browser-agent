@@ -6,7 +6,9 @@
 
 | Требование | Реализация / фактическая проверка | Статус |
 |---|---|---|
-| Текущая regression suite | 197 passed, 1 skipped, 0 failed; исходные assertions сохранены, добавлены 16 regression cases | automated PASS |
+| Security-fix baseline | 197 passed, 1 skipped, 0 failed в ранее полностью настроенном окружении | automated PASS |
+| GigaChat provider patch | 8 provider/config tests; полный текущий suite: 145 passed, 18 skipped, 0 failed | automated PASS |
+| GigaChat OAuth/function calling adapter | OAuth cache/refresh, letters-only tool aliases, argument normalization, retry/repair/sanitized errors | automated PASS |
 | Поиск в большом semantic snapshot | `find_in_page` находит control за пределами первых 180 и возвращает actionable ref | automated PASS |
 | Batch form fill | text + select через `fill_form`, значения не логируются | automated PASS |
 | Обход upload через text/batch | 8 real WebDriver cases: runtime/backend, root enabled/disabled | automated PASS |
@@ -24,9 +26,9 @@
 | Длинная задача | 108 шагов; первоначальная цель, план, 12 ответов, 24 факта сохранены | automated PASS |
 | CDP attach/detach | Chromium process + synthetic localStorage, повторное подключение, браузер не закрыт | automated PASS |
 | Исторический Wikipedia live E2E | До патча зафиксированы видимый поиск, stale recovery, 1137 и URL; см. LIVE_E2E.md | historical live PASS |
-| Новый LLM E2E исправленного ZIP | Нет настроенных API credentials; исторический PASS не является текущим rerun | UNVERIFIED |
+| Текущий GigaChat LLM E2E | GigaChat-3-Ultra → Runtime → WebDriver → Wikipedia; ответ 1137, COMPLETE за 11 шагов; `--check-llm` PASS | live PASS |
 | Реальные авторизованные почта/магазин/вакансии | Нет аккаунтов и участия пользователя в GUI | UNVERIFIED |
-| Termux baseline входной Work-версии | browser/LLM PASS, 80 passed / 2 skipped, Wikipedia visible-UI E2E PASS; текущий patch требует rerun | baseline live PASS / latest patch UNVERIFIED |
+| Текущая Termux-ревизия | `--check-browser` PASS, `--check-llm` PASS, 145 passed / 18 skipped, автономный Wikipedia E2E PASS | automated + live PASS для перечисленных проверок |
 
 ## Финальная desktop acceptance
 

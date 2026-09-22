@@ -1,10 +1,27 @@
+# GigaChat provider — 2026-09-22
+
+- Исправлена ложная классификация обычного GET search submit как consequential action: Runtime распознаёт `type=search` в той же GET-форме без ослабления POST и обычных GET-submit.
+- Добавлены regression cases для GET search submit, POST search submit и GET submit без matching search input.
+- Полный текущий suite: **145 passed, 18 skipped, 0 failed**.
+- `--check-browser` и реальный GigaChat `--check-llm` — PASS.
+- Автономный GigaChat-3-Ultra → WebDriver → Wikipedia E2E — LIVE PASS, ответ 1137, COMPLETE за 11 шагов.
+
+- Добавлен отдельный официальный GigaChat REST provider: OAuth Authorization key → cached access token → automatic refresh.
+- По умолчанию для GigaChat используется `GigaChat-3-Ultra` и `https://api.giga.chat/v1/`; scope/endpoint/TLS CA настраиваются через env.
+- OpenAI-style registry tools конвертируются в GigaChat `functions`; runtime names с `_` получают deterministic letters-only aliases и маппятся обратно перед Pydantic validation.
+- Поддержаны object/string `function_call.arguments`, один protocol-repair turn, refresh после chat 401 и bounded retries для timeout/transport/408/429/5xx.
+- Добавлены `LLM_MAX_RETRIES`, `LLM_RETRY_BACKOFF`, `GIGACHAT_CA_BUNDLE`, `GIGACHAT_VERIFY_SSL` и Termux one-shell инструкции.
+- Добавлены 8 provider/config regression tests. Текущая среда без ChromeDriver/live network: 145 passed, 18 skipped, 0 failed в сегментированных прогонах; security baseline до этого provider-патча: 197 passed, 1 skipped, 0 failed в полностью настроенном окружении.
+
+---
+
 # Исправления независимого аудита — 2026-09-22
 
 - Runtime запрещает text/batch ввод в file inputs; WebDriver дополнительно проверяет тип перед clear/send keys.
 - Подтверждённый Enter сравнивает адрес/метод формы и дополнительные поля свежего наблюдения.
 - Focus определяется до leaf во вложенном открытом Shadow DOM, включая find/collection serializers.
 - Добавлены 16 real-browser regression cases. Текущий полный результат: **197 passed, 1 skipped, 0 failed**.
-- Документы согласованы; исторический Wikipedia live PASS отделён от текущей проверки без API credentials.
+- Исторический Wikipedia live PASS отделён от текущего независимо воспроизведённого GigaChat/Termux live PASS.
 - Архитектура и существующие тестовые assertions сохранены.
 
 ---

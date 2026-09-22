@@ -6,7 +6,7 @@ from pydantic import ValidationError
 from browser_agent.tools import parse_call, schemas, REGISTRY
 from browser_agent.settings import Settings
 from browser_agent.llm import (Decision, ProviderError, MalformedDecision, ZAIProvider,
-    OpenAICompatibleProvider, create_provider)
+    OpenAICompatibleProvider, GigaChatProvider, create_provider)
 from browser_agent.runtime import Runtime, Memory
 
 @pytest.mark.parametrize('name,args', [
@@ -149,6 +149,9 @@ def test_provider_factory():
     client=SimpleNamespace()
     assert isinstance(create_provider(Settings(), client=client), ZAIProvider)
     assert isinstance(create_provider(Settings(provider='openai_compatible'), client=client), OpenAICompatibleProvider)
+    giga = Settings(provider='gigachat', model='GigaChat-3-Ultra',
+                    base_url='https://api.giga.chat/v1/', gigachat_auth_key='test-auth-key')
+    assert isinstance(create_provider(giga, client=client), GigaChatProvider)
 
 async def test_provider_timeout_sanitized():
     class Client:
